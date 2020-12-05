@@ -3,7 +3,7 @@ from rest_framework import viewsets
 from mystorage.models import Essay, Album, Files
 from mystorage.serializer import EssaySerializer, AlbumSerializer, FileSerializer
 from rest_framework.filters import SearchFilter
-
+from rest_framework.parsers import MultiPartParser, FormParser
 
 class PostViewSet(viewsets.ModelViewSet):
     queryset = Essay.objects.all().order_by('title')
@@ -48,10 +48,14 @@ class ImageViewSet(viewsets.ModelViewSet):
             qs = qs.none()
         return qs
 
+from rest_framework.response import Response
+from rest_framework import status
+
 class FileViewSet(viewsets.ModelViewSet):
     queryset = Files.objects.all()
     serializer_class = FileSerializer
 
+    parser_classes = (MultiPartParser, FormParser) # 다양한 media 타입으로 request를 수락.
     filter_backends = [SearchFilter]
     search_fields = ('desc', 'author',)
 
@@ -69,5 +73,10 @@ class FileViewSet(viewsets.ModelViewSet):
             qs = qs.none()
         return qs
 
-    # parser_class 지정
-    # create() 오버라이딩딩
+    def post(self, request, *args, **kwargs):
+        serializer = FileSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
